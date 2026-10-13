@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f766e" />
+  <title>WebGIS Simulasi Banjir Kota Pontianak (DEMNAS Kapuas-Landak)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap"
+    rel="stylesheet"
+  />
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+  <link rel="stylesheet" href="css/style.css?v=7" />
+</head>
+<body>
+  <div id="app">
+    <main id="map" aria-label="Peta simulasi genangan banjir Kota Pontianak"></main>
+
+    <!-- Hanya tampil pada layar ponsel ketika panel utama berubah menjadi bottom sheet. -->
+    <div id="topbar">
+      <div class="topbar-title">
+        <strong>Simulasi Banjir Pontianak</strong>
+        <span>DEMNAS &amp; Terrarium · Kapuas-Landak</span>
+      </div>
+      <div class="topbar-actions">
+        <button id="reset-view-mobile" type="button" class="icon-btn" title="Fokus kembali ke pusat Kota Pontianak" aria-label="Fokus kembali ke pusat Kota Pontianak">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="7" />
+            <circle cx="12" cy="12" r="2" />
+            <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+          </svg>
+        </button>
+        <button id="theme-toggle-mobile" type="button" class="icon-btn" title="Ganti tema tampilan" aria-label="Ganti tema terang atau gelap">
+          <svg class="ico-moon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+          </svg>
+          <svg class="ico-sun" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5" />
+            <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div id="loading" class="status-banner loading" role="status" aria-live="polite" hidden></div>
+
+    <div id="error-banner" class="status-banner error-banner" role="alert" hidden>
+      <span id="error-text">Gagal memuat data geospasial Kota Pontianak.</span>
+      <button id="retry-btn" type="button" class="retry-btn">Muat Ulang Data</button>
+    </div>
+
+    <button id="panel-toggle" type="button" aria-expanded="true" aria-controls="panel">
+      <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M4 7h10M18 7h2M4 12h4M12 12h8M4 17h10M18 17h2" />
+        <circle cx="16" cy="7" r="2" />
+        <circle cx="10" cy="12" r="2" />
+        <circle cx="16" cy="17" r="2" />
+      </svg>
+      <span id="panel-toggle-text">Sembunyikan panel</span>
+    </button>
+
+    <aside id="panel" aria-label="Kontrol simulasi banjir Kota Pontianak">
+      <button
+        id="sheet-handle"
+        type="button"
+        aria-expanded="false"
+        aria-controls="sheet-scroll"
+      >
+        <span class="grip" aria-hidden="true"></span>
+        <span class="sheet-handle-text">Buka panel kontrol</span>
+      </button>
+
+      <div id="sheet-scroll">
+        <div id="sheet-peek">
+          <header class="panel-header">
+            <div class="brand-block">
+              <span class="station-tag">Stasiun Pantau Kapuas-Landak</span>
+              <h1>Simulasi Banjir Pontianak</h1>
+              <p class="sub">DEMNAS &amp; Terrarium · Batas Administrasi Kota Pontianak</p>
+            </div>
+            <div class="header-actions">
+              <button id="reset-view" type="button" class="icon-btn" title="Fokus kembali ke pusat Kota Pontianak" aria-label="Fokus kembali ke pusat Kota Pontianak">
+                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="7" />
+                  <circle cx="12" cy="12" r="2" />
+                  <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+                </svg>
+              </button>
+              <button id="theme-toggle" type="button" class="icon-btn" title="Ganti tema tampilan" aria-label="Ganti tema terang atau gelap">
+                <svg class="ico-moon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                </svg>
+                <svg class="ico-sun" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="5" />
+                  <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+                </svg>
+              </button>
+            </div>
+          </header>
+
+          <section class="ctl ctl-level">
+            <div id="sim-mode-tabs" class="mode-tabs" role="tablist" aria-label="Pilih mode parameter simulasi banjir">
+              <button
+                id="mode-water"
+                type="button"
+                role="tab"
+                aria-selected="true"
+                class="mode-tab active"
+                data-mode="water"
+              >
+                Tinggi Air (m)
+              </button>
+              <button
+                id="mode-rain"
+                type="button"
+                role="tab"
+                aria-selected="false"
+                class="mode-tab"
+                data-mode="rain"
+              >
+                Durasi Hujan (Jam)
+              </button>
+            </div>
+
+            <div class="section-head">
+              <h2 id="param-heading">Tinggi muka air (m)</h2>
+              <div class="level-quick-actions">
+                <button id="clear-levels" type="button" class="mini-btn">Kosongkan</button>
+                <button id="select-all" type="button" class="mini-btn">Semua level</button>
+              </div>
+            </div>
+
+            <div id="level-buttons" class="level-buttons" role="group" aria-label="Pilih parameter simulasi"></div>
+
+            <div class="anim-row">
+              <button id="anim-play" type="button">
+                <svg class="ico ico-play" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" fill="currentColor">
+                  <path d="M7 4.5v15l12-7.5z" />
+                </svg>
+                <svg class="ico ico-pause" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" fill="currentColor">
+                  <path d="M7 4.5h3.5v15H7zM13.5 4.5H17v15h-3.5z" />
+                </svg>
+                <span id="anim-play-text">Putar simulasi 0 ke 4 m</span>
+              </button>
+              <select id="anim-speed" aria-label="Kecepatan animasi simulasi">
+                <option value="1500">0,5x</option>
+                <option value="900" selected>1x</option>
+                <option value="500">2x</option>
+              </select>
+            </div>
+
+            <div id="stat-active" class="stat-active" aria-live="polite"></div>
+          </section>
+        </div>
+
+        <div id="sheet-rest" class="sheet-grid">
+          <section class="ctl">
+            <h2>Pengaturan layer</h2>
+            <label class="slider-row" for="flood-opacity">
+              <span class="slider-label">
+                <span>Opasitas genangan banjir</span>
+                <strong id="flood-opacity-val">70%</strong>
+              </span>
+              <input type="range" id="flood-opacity" min="0" max="100" value="70" />
+            </label>
+            <label class="check-row" for="hillshade-toggle">
+              <input type="checkbox" id="hillshade-toggle" checked />
+              <span>Tampilkan relief topografi (hillshade)</span>
+            </label>
+            <label class="slider-row" for="hillshade-opacity">
+              <span class="slider-label">
+                <span>Opasitas relief topografi</span>
+                <strong id="hillshade-opacity-val">28%</strong>
+              </span>
+              <input type="range" id="hillshade-opacity" min="0" max="100" value="28" />
+            </label>
+          </section>
+
+          <section class="ctl">
+            <h2>Peta dasar</h2>
+            <div id="basemap-radio" class="radio-group" role="radiogroup" aria-label="Pilih peta dasar"></div>
+          </section>
+
+          <section class="ctl">
+            <h2 id="legend-heading">Legenda kedalaman</h2>
+            <ul id="legend" class="legend"></ul>
+            <p id="legend-note" class="legend-note"></p>
+          </section>
+
+          <section class="ctl">
+            <h2 id="bars-heading">Estimasi luas tergenang (km²)</h2>
+            <ul id="stat-bars" class="stat-bars"></ul>
+          </section>
+
+          <footer class="panel-footer">
+            <p id="footer-note">
+              Klik titik mana pun di area Kota Pontianak untuk menghitung estimasi kedalaman banjir berbasis
+              <strong>Tinggi Muka Air (m)</strong> maupun <strong>Durasi Hujan DEMNAS (Jam)</strong>.
+            </p>
+          </footer>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+  <script src="js/app.js?v=7"></script>
+</body>
+</html>

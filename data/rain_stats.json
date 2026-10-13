@@ -1,0 +1,69 @@
+{
+  "stats": [
+    {
+      "duration": 0.5,
+      "n_features": 115,
+      "area_m2": 7363462.6,
+      "area_ha": 736.35,
+      "area_km2": 7.36,
+      "rain_mm": 27.5
+    },
+    {
+      "duration": 1,
+      "n_features": 201,
+      "area_m2": 9598170.7,
+      "area_ha": 959.82,
+      "area_km2": 9.6,
+      "rain_mm": 55.0
+    },
+    {
+      "duration": 1.5,
+      "n_features": 262,
+      "area_m2": 12072938.8,
+      "area_ha": 1207.29,
+      "area_km2": 12.07,
+      "rain_mm": 82.5
+    },
+    {
+      "duration": 2,
+      "n_features": 316,
+      "area_m2": 14976137.0,
+      "area_ha": 1497.61,
+      "area_km2": 14.98,
+      "rain_mm": 110.0
+    },
+    {
+      "duration": 2.5,
+      "n_features": 374,
+      "area_m2": 18548280.4,
+      "area_ha": 1854.83,
+      "area_km2": 18.55,
+      "rain_mm": 137.5
+    },
+    {
+      "duration": 3,
+      "n_features": 414,
+      "area_m2": 23252647.7,
+      "area_ha": 2325.26,
+      "area_km2": 23.25,
+      "rain_mm": 165.0
+    },
+    {
+      "duration": 3.5,
+      "n_features": 490,
+      "area_m2": 29894607.7,
+      "area_ha": 2989.46,
+      "area_km2": 29.89,
+      "rain_mm": 192.5
+    },
+    {
+      "duration": 4,
+      "n_features": 470,
+      "area_m2": 41622861.7,
+      "area_ha": 4162.29,
+      "area_km2": 41.62,
+      "rain_mm": 220.0
+    }
+  ],
+  "intensityMmHr": 55.0
+}

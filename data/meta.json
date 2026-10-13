@@ -1,0 +1,55 @@
+{
+  "region": "Kota Pontianak, Kalimantan Barat",
+  "source": "DEMNAS & Terrarium \u00b7 Batas Administrasi Kota Pontianak",
+  "bounds": [
+    [
+      -0.10019,
+      109.27217
+    ],
+    [
+      0.04012,
+      109.38735
+    ]
+  ],
+  "maxBounds": [
+    [
+      -0.12,
+      109.25
+    ],
+    [
+      0.05,
+      109.41
+    ]
+  ],
+  "center": [
+    -0.0263,
+    109.3425
+  ],
+  "defaultZoom": 13,
+  "minZoom": 11,
+  "levels": [
+    1,
+    1.5,
+    2,
+    2.5,
+    3,
+    3.5,
+    4
+  ],
+  "rainDurations": [
+    0.5,
+    1,
+    1.5,
+    2,
+    2.5,
+    3,
+    3.5,
+    4
+  ],
+  "rainIntensityMmHr": 55.0,
+  "dem": {
+    "min": 0.07000000029802322,
+    "max": 8.460000038146973
+  },
+  "version": "ptk-2026-v7"
+}

@@ -1,0 +1,60 @@
+{
+  "stats": [
+    {
+      "level": 1,
+      "n_features": 130,
+      "area_m2": 7512996.6,
+      "area_ha": 751.3,
+      "area_km2": 7.51,
+      "water_elev": 1.0
+    },
+    {
+      "level": 1.5,
+      "n_features": 215,
+      "area_m2": 9366474.9,
+      "area_ha": 936.65,
+      "area_km2": 9.37,
+      "water_elev": 1.5
+    },
+    {
+      "level": 2,
+      "n_features": 306,
+      "area_m2": 11510169.5,
+      "area_ha": 1151.02,
+      "area_km2": 11.51,
+      "water_elev": 2.0
+    },
+    {
+      "level": 2.5,
+      "n_features": 361,
+      "area_m2": 14956691.9,
+      "area_ha": 1495.67,
+      "area_km2": 14.96,
+      "water_elev": 2.5
+    },
+    {
+      "level": 3,
+      "n_features": 474,
+      "area_m2": 18856611.5,
+      "area_ha": 1885.66,
+      "area_km2": 18.86,
+      "water_elev": 3.0
+    },
+    {
+      "level": 3.5,
+      "n_features": 560,
+      "area_m2": 25159306.4,
+      "area_ha": 2515.93,
+      "area_km2": 25.16,
+      "water_elev": 3.5
+    },
+    {
+      "level": 4,
+      "n_features": 621,
+      "area_m2": 33240682.7,
+      "area_ha": 3324.07,
+      "area_km2": 33.24,
+      "water_elev": 4.0
+    }
+  ]
+}
