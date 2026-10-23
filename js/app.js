@@ -30,11 +30,6 @@ const STORAGE_KEYS = {
 
 const PONTIANAK_CENTER = [-0.0263, 109.3425];
 const DEFAULT_ZOOM = 13;
-const MIN_ZOOM = 12;
-const PONTIANAK_MAX_BOUNDS = L.latLngBounds(
-  [-0.120, 109.240],
-  [0.065, 109.435]
-);
 
 const KECAMATAN_CENTERS = [
   { name: 'Kec. Pontianak Kota', lat: -0.0265, lon: 109.3315 },
@@ -50,6 +45,16 @@ const state = {
   levels: [],
   rainDurations: [],
   rainIntensityMmHr: 55,
+  rainIntensity: 35.0,
+  tideLevel: 0.9,
+  riverDischarge: 3000,
+  slopeLayer: null,
+  landcoverLayer: null,
+  demGridBounds: null,
+  dynamicRainOverlay: null,
+  offscreenCanvas: null,
+  offscreenCtx: null,
+  offscreenImgData: null,
   selectedWater: new Set(),
   selectedRain: new Set(),
   floodAlpha: 0.7,
@@ -61,6 +66,7 @@ const state = {
   dataVersion: '',
   loadToken: 0,
 };
+window.appState = state;
 
 /* Tiap level dirender satu kali pada pane tersendiri dan diatur lewat opacity
    agar animasi kenaikan air maupun durasi hujan dikomposit GPU tanpa membangun ulang DOM SVG. */
@@ -88,29 +94,11 @@ const topLevel = () => {
 };
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
-function getSavedView() {
-  const rawLat = parseFloat(localStorage.getItem(STORAGE_KEYS.lat));
-  const rawLng = parseFloat(localStorage.getItem(STORAGE_KEYS.lng));
-  const rawZoom = parseInt(localStorage.getItem(STORAGE_KEYS.zoom), 10);
-
-  const validPos =
-    !Number.isNaN(rawLat) &&
-    !Number.isNaN(rawLng) &&
-    PONTIANAK_MAX_BOUNDS.contains([rawLat, rawLng]);
-  const validZoom = !Number.isNaN(rawZoom) && rawZoom >= MIN_ZOOM && rawZoom <= 19;
-
-  return {
-    center: validPos ? [rawLat, rawLng] : PONTIANAK_CENTER,
-    zoom: validZoom ? rawZoom : DEFAULT_ZOOM,
-  };
-}
-
-function saveMapView() {
-  const center = map.getCenter();
-  localStorage.setItem(STORAGE_KEYS.lat, String(center.lat));
-  localStorage.setItem(STORAGE_KEYS.lng, String(center.lng));
-  localStorage.setItem(STORAGE_KEYS.zoom, String(map.getZoom()));
-}
+try {
+  localStorage.removeItem(STORAGE_KEYS.lat);
+  localStorage.removeItem(STORAGE_KEYS.lng);
+  localStorage.removeItem(STORAGE_KEYS.zoom);
+} catch (_) {}
 
 function saveSelectedLevels() {
   if (isRainMode()) {
@@ -120,17 +108,13 @@ function saveSelectedLevels() {
   }
 }
 
-const initialView = getSavedView();
 const map = L.map('map', {
   zoomControl: false,
-  minZoom: MIN_ZOOM,
-  maxBounds: PONTIANAK_MAX_BOUNDS,
-  maxBoundsViscosity: 0.85,
-}).setView(initialView.center, initialView.zoom);
+  minZoom: 4,
+  maxZoom: 19,
+}).setView(PONTIANAK_CENTER, DEFAULT_ZOOM);
 
 L.control.zoom({ position: 'topright' }).addTo(map);
-map.on('moveend', saveMapView);
-map.on('zoomend', saveMapView);
 
 (function initTheme() {
   const savedTheme = localStorage.getItem(STORAGE_KEYS.theme) || 'light';
@@ -149,17 +133,17 @@ map.on('zoomend', saveMapView);
 
 (function initResetViewButtons() {
   function resetToPontianak() {
-    map.setView(PONTIANAK_CENTER, DEFAULT_ZOOM, { animate: false });
-    saveMapView();
+    map.setView(PONTIANAK_CENTER, DEFAULT_ZOOM, { animate: true });
   }
   $('reset-view').addEventListener('click', resetToPontianak);
   $('reset-view-mobile').addEventListener('click', resetToPontianak);
 })();
 
 /* Kredit sumber peta tetap ada di DOM untuk mematuhi lisensi ODbL/Esri, namun
-   dilipat menjadi tombol "i" agar tidak menutupi ruang peta di layar sempit. */
+   dilipat menjadi tombol "i" di samping tombol zoom agar tidak menutupi ruang peta. */
 (function compactAttribution() {
   const ctl = map.attributionControl;
+  ctl.setPosition('topright');
   ctl.setPrefix('');
 
   const el = ctl.getContainer();
@@ -220,7 +204,9 @@ const sheet = (() => {
   const closedOffset = () => panel.offsetHeight - peekHeight();
 
   function peekHeight() {
-    return handle.offsetHeight + peek.offsetHeight + 16;
+    const measured = handle.offsetHeight + peek.offsetHeight + 10;
+    const maxPeek = Math.round(window.innerHeight * 0.42);
+    return Math.min(measured, maxPeek);
   }
 
   function measure() {
@@ -383,6 +369,21 @@ function syncModeHeadings() {
   $('bars-heading').textContent = rain
     ? 'Luas tergenang per durasi (km²)'
     : 'Estimasi luas tergenang (km²)';
+
+  const dynBox = $('dynamic-params-container');
+  if (dynBox) {
+    dynBox.hidden = !rain;
+    dynBox.style.display = rain ? 'flex' : 'none';
+  }
+
+  const staticBox = document.querySelector('.static-toggles-box');
+  if (staticBox) {
+    staticBox.style.display = rain ? 'block' : 'none';
+  }
+
+  if (typeof sheet !== 'undefined' && sheet && sheet.measure) {
+    sheet.measure();
+  }
 }
 
 function buildLevelButtons() {
@@ -518,10 +519,154 @@ function syncLayerMapVisibility(layerMap, isModeActive, selectedSet) {
   });
 }
 
+function computeDynamicRainSimulation(durationHours) {
+  if (!state.demGrid || durationHours == null) return null;
+  const d = state.demGrid;
+  const H_river = state.tideLevel + (state.riverDischarge - 3000) * 0.00018;
+  const rainRatio = state.rainIntensity / 55.0;
+  const backwaterMult = Math.max(0.35, 1.0 - Math.max(0, H_river - 0.9) / 1.8);
+
+  let floodedCount = 0;
+  const ny = d.ny;
+  const nx = d.nx;
+  const grid = d.grid;
+  const onset = d.rainOnset;
+
+  for (let r = 0; r < ny; r++) {
+    const gRow = grid[r];
+    const oRow = onset ? onset[r] : null;
+    for (let c = 0; c < nx; c++) {
+      const elev = gRow[c];
+      if (elev == null || isNaN(elev)) continue;
+      if (elev <= H_river) {
+        floodedCount++;
+        continue;
+      }
+      if (oRow) {
+        const effOnset = oRow[c] * (1.0 / Math.max(0.04, rainRatio)) * backwaterMult;
+        if (durationHours >= effOnset) {
+          floodedCount++;
+        }
+      }
+    }
+  }
+
+  const cellAreaM2 = 33.83 * 40.94;
+  const area_m2 = floodedCount * cellAreaM2;
+  const area_ha = Math.round(area_m2 / 10000);
+  const area_km2 = Number((area_m2 / 1000000).toFixed(2));
+  return { area_km2, area_ha, floodedCount, H_river };
+}
+
+function updateDynamicRainCanvas(duration) {
+  if (!state.demGrid || !state.demGridBounds) return;
+  const d = state.demGrid;
+  const nx = d.nx;
+  const ny = d.ny;
+
+  if (!state.offscreenCanvas) {
+    state.offscreenCanvas = document.createElement('canvas');
+    state.offscreenCanvas.width = nx;
+    state.offscreenCanvas.height = ny;
+    state.offscreenCtx = state.offscreenCanvas.getContext('2d');
+    state.offscreenImgData = state.offscreenCtx.createImageData(nx, ny);
+  }
+
+  const ctx = state.offscreenCtx;
+  const imgData = state.offscreenImgData;
+  const buf = imgData.data;
+
+  // Clear buffer
+  buf.fill(0);
+
+  if (duration != null && duration > 0) {
+    const H_river = state.tideLevel + (state.riverDischarge - 3000) * 0.00018;
+    const rainRatio = state.rainIntensity / 55.0;
+    const backwaterMult = Math.max(0.35, 1.0 - Math.max(0, H_river - 0.9) / 1.8);
+    const grid = d.grid;
+    const onset = d.rainOnset;
+
+    for (let r = 0; r < ny; r++) {
+      const imgY = ny - 1 - r; // Invert Y for Leaflet geo bounds
+      const rowOffset = imgY * nx * 4;
+      const gRow = grid[r];
+      const oRow = onset ? onset[r] : null;
+
+      for (let c = 0; c < nx; c++) {
+        const elev = gRow[c];
+        if (elev == null || isNaN(elev)) continue;
+
+        const isDirectRiver = elev <= H_river;
+        let isFlooded = isDirectRiver;
+        let depth = isDirectRiver ? Math.max(0.2, H_river - elev) : 0;
+
+        if (!isFlooded && oRow) {
+          const effOnset = oRow[c] * (1.0 / Math.max(0.04, rainRatio)) * backwaterMult;
+          if (duration >= effOnset) {
+            isFlooded = true;
+            depth = (duration - effOnset) * 0.35 + 0.12;
+          }
+        }
+
+        if (isFlooded) {
+          const px = rowOffset + (c * 4);
+          const depthRatio = Math.min(1.0, depth / 1.4);
+          // High-contrast, beautiful hydrological gradient
+          // Deep water/channels: Rich Dark Navy [20, 68, 140]
+          // Shallow/front: Vibrant Azure Cyan [50, 155, 225]
+          buf[px] = Math.round(50 - depthRatio * 30);
+          buf[px + 1] = Math.round(155 - depthRatio * 85);
+          buf[px + 2] = Math.round(225 - depthRatio * 85);
+          buf[px + 3] = Math.round(175 + depthRatio * 65);
+        }
+      }
+    }
+  }
+
+  ctx.putImageData(imgData, 0, 0);
+  const dataUrl = state.offscreenCanvas.toDataURL();
+
+  if (!state.dynamicRainOverlay) {
+    state.dynamicRainOverlay = L.imageOverlay(dataUrl, state.demGridBounds, {
+      opacity: state.floodAlpha,
+      interactive: false,
+      zIndex: 420,
+    });
+  } else {
+    state.dynamicRainOverlay.setUrl(dataUrl);
+    state.dynamicRainOverlay.setOpacity(state.floodAlpha);
+  }
+}
+
 function syncLayers() {
   const rain = isRainMode();
-  syncLayerMapVisibility(floodLayers, !rain, state.selectedWater);
-  syncLayerMapVisibility(rainLayers, rain, state.selectedRain);
+  if (rain) {
+    // Hide static water level layers and legacy rain layers
+    syncLayerMapVisibility(floodLayers, false, new Set());
+    syncLayerMapVisibility(rainLayers, false, new Set());
+
+    const top = topLevel();
+    updateDynamicRainCanvas(top);
+    if (state.dynamicRainOverlay) {
+      if (top != null) {
+        if (!map.hasLayer(state.dynamicRainOverlay)) {
+          state.dynamicRainOverlay.addTo(map);
+        }
+        state.dynamicRainOverlay.setOpacity(state.floodAlpha);
+      } else {
+        if (map.hasLayer(state.dynamicRainOverlay)) {
+          map.removeLayer(state.dynamicRainOverlay);
+        }
+      }
+    }
+  } else {
+    // Water Mode: Show static flood levels
+    if (state.dynamicRainOverlay && map.hasLayer(state.dynamicRainOverlay)) {
+      map.removeLayer(state.dynamicRainOverlay);
+    }
+    syncLayerMapVisibility(floodLayers, true, state.selectedWater);
+    syncLayerMapVisibility(rainLayers, false, new Set());
+  }
 }
 
 async function setSelection(values, persist = true) {
@@ -535,6 +680,11 @@ async function setSelection(values, persist = true) {
   syncLevelButtons();
   syncLegend();
   syncStats();
+
+  if (rain) {
+    syncLayers();
+    return;
+  }
 
   const sel = activeSelected();
   const lMap = activeLayerMap();
@@ -733,12 +883,35 @@ function syncStats() {
       ? '<div class="big">0 km² (Durasi 0 jam)</div><div class="small">Belum ada durasi hujan aktif. Pilih tombol durasi 0.5 hingga 4 jam atau jalankan simulasi.</div>'
       : '<div class="big">0 km² (Level 0 m)</div><div class="small">Belum ada level genangan aktif. Pilih tombol tinggi muka air 1 hingga 4 m atau jalankan simulasi.</div>';
   } else if (rain) {
+    const dyn = computeDynamicRainSimulation(active.duration);
+    const areaKm2 = dyn ? dyn.area_km2 : active.area_km2;
+    const areaHa = dyn ? dyn.area_ha : active.area_ha;
+    const countZ = dyn ? dyn.floodedCount : active.n_features;
+    const rainMm = Math.round(state.rainIntensity * active.duration);
+    const H_river = dyn ? dyn.H_river.toFixed(2) : state.tideLevel.toFixed(2);
+
+    let statusText = 'Waspada';
+    let statusColor = '#eab308';
+    if (areaKm2 < 5) {
+      statusText = 'Aman (Genangan Terlokalisir)';
+      statusColor = '#22c55e';
+    } else if (areaKm2 < 18) {
+      statusText = 'Waspada (Cekungan Rendah Tergenang)';
+      statusColor = '#eab308';
+    } else if (areaKm2 < 35) {
+      statusText = 'Siaga (Limpasan Masuk Pemukiman)';
+      statusColor = '#f97316';
+    } else {
+      statusText = 'Kritis (Banjir Rob & Limpasan Meluas)';
+      statusColor = '#ef4444';
+    }
+
     const bands = sel.size > 1 ? ` · ${sel.size} tahap waktu aktif` : '';
     box.innerHTML = `
-      <div class="big">${active.area_km2.toLocaleString('id-ID')} km²</div>
-      <div class="small">${active.area_ha.toLocaleString('id-ID')} ha (${active.n_features} cekungan) · hujan ${
-      active.duration
-    } jam (${active.rain_mm} mm)${bands}</div>`;
+      <div class="big">${areaKm2.toLocaleString('id-ID')} km²</div>
+      <div class="small" style="margin-top:2px;">
+        ${areaHa.toLocaleString('id-ID')} ha tergenang · Hujan <b>${active.duration} jam (${rainMm} mm)</b> · <span style="font-weight:700;color:${statusColor}">${statusText}</span>${bands}
+      </div>`;
   } else {
     const bands = sel.size > 1 ? ` · ${sel.size} pita kedalaman aktif` : '';
     box.innerHTML = `
@@ -757,12 +930,17 @@ function syncStats() {
   statsArr.forEach((r) => {
     const val = rain ? r.duration : r.level;
     const unit = rain ? 'j' : 'm';
+    let km2Val = r.area_km2;
+    if (rain) {
+      const dynStep = computeDynamicRainSimulation(val);
+      if (dynStep) km2Val = dynStep.area_km2;
+    }
     const li = document.createElement('li');
     if (sel.has(val)) li.classList.add('active');
     li.innerHTML = `
       <span>${val} ${unit}</span>
-      <span class="track"><span class="fill" style="width:${(r.area_km2 / max) * 100}%"></span></span>
-      <span>${r.area_km2.toFixed(1)}</span>`;
+      <span class="track"><span class="fill" style="width:${Math.min(100, (km2Val / Math.max(1, max)) * 100)}%"></span></span>
+      <span>${km2Val.toFixed(1)}</span>`;
     ul.appendChild(li);
   });
 }
@@ -841,22 +1019,45 @@ map.on('click', (e) => {
     const twiCat =
       twiScore >= 0.65 ? 'Tinggi (Cekungan)' : twiScore >= 0.35 ? 'Sedang' : 'Rendah';
     if (top == null) {
-      html += `Elevasi DEMNAS: <b>${terrainElev} m</b><br/>
-        Indeks akumulasi aliran: <b>${twiCat}</b><br/>
-        Pilih durasi hujan (0,5 hingga 4 jam) di panel untuk menghitung estimasi genangan.`;
-    } else if (rainOnset != null && rainOnset > top) {
-      const cumMm = (top * state.rainIntensityMmHr).toFixed(1);
-      html += `<b>Area belum tergenang</b><br/>
-        Durasi hujan: ${top} jam (${cumMm} mm)<br/>
-        Elevasi DEMNAS: ${terrainElev} m · Akumulasi: ${twiCat}`;
+      html += `Elevasi DEMNAS: <b>${terrainElev} m dpl</b><br/>
+        Indeks Cekungan (TWI): <b>${twiCat}</b><br/>
+        Pilih durasi simulasi (0,5 hingga 4 jam) di panel untuk menguji skenario multi-parameter.`;
     } else {
-      const onset = rainOnset != null ? rainOnset : 0.35;
-      const cumMm = (top * state.rainIntensityMmHr).toFixed(1);
-      const estDepth = Number(Math.max(0.08, (top - onset) * 0.32 + 0.12).toFixed(2));
-      html += `Durasi hujan: <b>${top} jam (${cumMm} mm)</b><br/>
-        Elevasi DEMNAS: ${terrainElev} m · Akumulasi: ${twiCat}<br/>
-        Perkiraan kedalaman: <b>${estDepth} m</b>
-        <div class="calc">Mulai tergenang sejak ${onset} jam (selisih ${(top - onset).toFixed(2)} jam)</div>`;
+      const H_river = state.tideLevel + (state.riverDischarge - 3000) * 0.00018;
+      const rainRatio = state.rainIntensity / 55.0;
+      const backwaterMult = Math.max(0.35, 1.0 - Math.max(0, H_river - 0.9) / 1.8);
+      const effOnset =
+        rainOnset != null ? rainOnset * (1.0 / Math.max(0.04, rainRatio)) * backwaterMult : 1.5;
+      const cumMm = Math.round(top * state.rainIntensity);
+
+      const isDirectRob = terrainElev <= H_river;
+      const isRainFlooded = top >= effOnset;
+      const isFlooded = isDirectRob || isRainFlooded;
+
+      if (!isFlooded) {
+        html += `<span class="badge-safe" style="display:inline-block;padding:2px 8px;border-radius:4px;background:#dcfce7;color:#166534;font-weight:700;font-size:0.75rem;margin-bottom:6px;">Bebas Genangan</span><br/>
+          Durasi hujan: <b>${top} jam (${cumMm} mm)</b><br/>
+          Elevasi tanah: <b>${terrainElev} m dpl</b> · Muka air sungai: <b>${H_river.toFixed(2)} m dpl</b><br/>
+          <div class="calc" style="margin-top:6px;font-size:0.72rem;color:var(--muted);">Titik ini aman dari luapan sungai dan tanah masih mampu meresapkan air (estimasi mulai tergenang jika hujan berlanjut &gt; ${effOnset.toFixed(1)} jam).</div>`;
+      } else {
+        const waterLevelHead = isDirectRob
+          ? H_river
+          : terrainElev + Math.min(1.2, (top - effOnset) * 0.28 + 0.1);
+        const estDepthCm = Math.max(5, Math.round((waterLevelHead - terrainElev) * 100));
+        const estDepthM = (estDepthCm / 100).toFixed(2);
+        const trigger =
+          isDirectRob && isRainFlooded
+            ? 'Kombinasi pasang rob muara & curah hujan tinggi'
+            : isDirectRob
+            ? 'Luapan pasang rob muara & debit kiriman sungai'
+            : 'Limpasan air hujan lokal terhambat aliran balik drainase';
+
+        html += `<span class="badge-flood" style="display:inline-block;padding:2px 8px;border-radius:4px;background:#fee2e2;color:#991b1b;font-weight:700;font-size:0.75rem;margin-bottom:6px;">Tergenang Banjir</span><br/>
+          Perkiraan kedalaman air: <b>${estDepthM} m (${estDepthCm} cm)</b><br/>
+          Elevasi tanah: <b>${terrainElev} m dpl</b> · Muka air sungai: <b>${H_river.toFixed(2)} m dpl</b><br/>
+          Hujan: <b>${top} jam (${cumMm} mm)</b> · Intensitas: <b>${state.rainIntensity} mm/jam</b><br/>
+          <div class="calc" style="margin-top:6px;font-size:0.72rem;color:var(--muted);">Pemicu: ${trigger}. Tergenang sejak durasi ${effOnset.toFixed(1)} jam.</div>`;
+      }
     }
   } else if (top == null) {
     html += `Elevasi tanah: <b>${terrainElev} m</b><br/>
@@ -925,6 +1126,9 @@ const hillshadeOpacityVal = $('hillshade-opacity-val');
     state.floodAlpha = val / 100;
     floodOpacityVal.textContent = `${val}%`;
     floodGroupEl().style.opacity = String(state.floodAlpha);
+    if (state.dynamicRainOverlay) {
+      state.dynamicRainOverlay.setOpacity(state.floodAlpha);
+    }
     localStorage.setItem(STORAGE_KEYS.floodAlpha, String(val));
   });
 
@@ -993,6 +1197,7 @@ async function loadAppData() {
     state.stats = statsRes.stats;
     state.rainStats = rainStatsRes.stats;
     state.demGrid = demGrid;
+    state.demGridBounds = meta.bounds;
 
     if (state.boundaryLayer) {
       map.removeLayer(state.boundaryLayer);
@@ -1036,7 +1241,138 @@ async function loadAppData() {
   }
 }
 
+function setupDynamicParameterControls() {
+  const rainBadges = {
+    '0.5': 'Sangat Ringan (< 1 mm/jam)',
+    '3': 'Ringan (1 - 5 mm/jam)',
+    '7.5': 'Sedang (5 - 10 mm/jam)',
+    '15': 'Lebat (10 - 20 mm/jam)',
+    '35': 'Sangat Lebat (> 20 mm/jam)',
+  };
+  document.querySelectorAll('#rain-intensity-group .subparam-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#rain-intensity-group .subparam-btn').forEach((b) => {
+        b.classList.remove('active');
+        b.setAttribute('aria-checked', 'false');
+      });
+      btn.classList.add('active');
+      btn.setAttribute('aria-checked', 'true');
+      const val = parseFloat(btn.dataset.val);
+      state.rainIntensity = val;
+      const label = rainBadges[String(val)] || `${val} mm/jam`;
+      $('val-rain-intensity').textContent = label;
+      syncLayers();
+      syncStats();
+    });
+  });
+
+  const tideBadges = {
+    '0.4': 'Surut Terendah (0,4 m dpl)',
+    '0.9': 'Normal (0,9 m dpl)',
+    '1.5': 'Menengah (1,5 m dpl)',
+    '2': 'Rob Purnama (2,0 m dpl)',
+    '2.4': 'Rob Ekstrem (2,4 m dpl)',
+  };
+  document.querySelectorAll('#tide-group .subparam-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#tide-group .subparam-btn').forEach((b) => {
+        b.classList.remove('active');
+        b.setAttribute('aria-checked', 'false');
+      });
+      btn.classList.add('active');
+      btn.setAttribute('aria-checked', 'true');
+      const val = parseFloat(btn.dataset.val);
+      state.tideLevel = val;
+      const label = tideBadges[String(val)] || `${val} m dpl`;
+      $('val-tide').textContent = label;
+      syncLayers();
+      syncStats();
+    });
+  });
+
+  const dischargeBadges = {
+    '1500': 'Rendah (1.500 m³/s)',
+    '3000': 'Normal (3.000 m³/s)',
+    '4500': 'Siaga (4.500 m³/s)',
+    '6000': 'Banjir Q50 (6.000 m³/s)',
+    '7500': 'Ekstrem Q100 (7.500 m³/s)',
+  };
+  document.querySelectorAll('#discharge-group .subparam-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#discharge-group .subparam-btn').forEach((b) => {
+        b.classList.remove('active');
+        b.setAttribute('aria-checked', 'false');
+      });
+      btn.classList.add('active');
+      btn.setAttribute('aria-checked', 'true');
+      const val = parseInt(btn.dataset.val, 10);
+      state.riverDischarge = val;
+      const label = dischargeBadges[String(val)] || `${val} m³/s`;
+      $('val-discharge').textContent = label;
+      syncLayers();
+      syncStats();
+    });
+  });
+
+  const slopeToggle = $('slope-toggle');
+  if (slopeToggle) {
+    slopeToggle.addEventListener('change', async () => {
+      if (slopeToggle.checked) {
+        if (!state.slopeLayer) {
+          const res = await fetch(`data/static_layers/slope.geojson?v=${state.dataVersion || Date.now()}`);
+          const gj = await res.json();
+          state.slopeLayer = L.geoJSON(gj, {
+            style: (feat) => ({
+              color: feat.properties.color || '#2b83ba',
+              weight: 0.8,
+              fillColor: feat.properties.color || '#2b83ba',
+              fillOpacity: 0.45,
+            }),
+            onEachFeature: (feat, layer) => {
+              layer.bindTooltip(
+                `<strong>Kemiringan: ${feat.properties.name} (${feat.properties.slope_range})</strong><br>Luas: ${feat.properties.area_km2} km² (${feat.properties.percent}%)<br>Karakteristik: ${feat.properties.risk}`
+              );
+            },
+          });
+        }
+        state.slopeLayer.addTo(map);
+      } else if (state.slopeLayer) {
+        map.removeLayer(state.slopeLayer);
+      }
+    });
+  }
+
+  const lcToggle = $('landcover-toggle');
+  if (lcToggle) {
+    lcToggle.addEventListener('change', async () => {
+      if (lcToggle.checked) {
+        if (!state.landcoverLayer) {
+          const res = await fetch(`data/static_layers/landcover.geojson?v=${state.dataVersion || Date.now()}`);
+          const gj = await res.json();
+          state.landcoverLayer = L.geoJSON(gj, {
+            style: (feat) => ({
+              color: feat.properties.color || '#33a02c',
+              weight: 0.8,
+              fillColor: feat.properties.color || '#33a02c',
+              fillOpacity: 0.4,
+            }),
+            onEachFeature: (feat, layer) => {
+              layer.bindTooltip(
+                `<strong>${feat.properties.name}</strong><br>Koefisien Limpasan (C): ${feat.properties.c_runoff}<br>Luas: ${feat.properties.area_km2} km² (${feat.properties.percent}%)`
+              );
+            },
+          });
+        }
+        state.landcoverLayer.addTo(map);
+      } else if (state.landcoverLayer) {
+        map.removeLayer(state.landcoverLayer);
+      }
+    });
+  }
+}
+
 $('retry-btn').addEventListener('click', loadAppData);
 
 buildBasemapRadio();
+setupDynamicParameterControls();
 loadAppData();

@@ -101,27 +101,38 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  max-width: calc(100% - 72px);
-  padding: 6px 10px 6px 14px;
+  gap: 8px;
+  max-width: calc(100% - 108px);
+  padding: 6px 10px 6px 12px;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-md);
   background: var(--panel);
   box-shadow: 0 4px 14px rgba(15, 23, 42, 0.18);
 }
 
+.topbar-title {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
 .topbar-title strong {
   display: block;
-  font-size: clamp(0.8rem, 2.2vw, 0.9rem);
+  font-size: clamp(0.78rem, 2.2vw, 0.88rem);
   font-weight: 800;
   line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .topbar-title span {
   display: block;
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   color: var(--muted);
   margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .topbar-actions,
@@ -249,9 +260,12 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
+  margin-inline: auto;
   z-index: 700;
   display: flex;
   flex-direction: column;
+  width: 100%;
+  max-width: 100%;
   height: 85dvh;
   background: var(--panel);
   border-top: 2px solid var(--accent-border);
@@ -482,6 +496,126 @@ body {
   display: flex;
   gap: 8px;
   margin-top: 10px;
+}
+
+/* Container parameter dinamis multi-faktor */
+.dynamic-params-container {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.dynamic-params-container[hidden],
+[hidden] {
+  display: none !important;
+}
+
+.subparam-card {
+  padding: 10px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--panel-2);
+}
+
+.subparam-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.subparam-title {
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.subparam-badge {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--accent-text);
+  background: var(--accent-soft);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--accent-border);
+}
+
+.subparam-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.subparam-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 4px 2px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.subparam-btn .sub-label {
+  font-size: 0.67rem;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.subparam-btn .sub-val {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--muted);
+  margin-top: 2px;
+  line-height: 1.1;
+}
+
+.subparam-btn:hover {
+  border-color: var(--accent-border);
+  color: var(--text);
+  background: var(--accent-soft);
+}
+
+.subparam-btn.active {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent-edge);
+}
+
+.subparam-btn.active .sub-val {
+  color: var(--on-accent);
+  opacity: 0.92;
+}
+
+.static-toggles-box {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--panel-2);
+}
+
+.sub-heading-text {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
 }
 
 #anim-play {
@@ -744,7 +878,21 @@ input[type="radio"] {
 }
 
 .leaflet-bottom {
-  margin-bottom: calc(var(--float-b) + 52px);
+  margin-bottom: 0;
+}
+
+.leaflet-top.leaflet-right {
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 10px 0 0;
+  pointer-events: none;
+}
+
+.leaflet-top.leaflet-right .leaflet-control {
+  margin: 0;
+  pointer-events: auto;
 }
 
 .leaflet-touch .leaflet-bar {
@@ -809,14 +957,22 @@ input[type="radio"] {
 .leaflet-control-attribution {
   display: flex;
   align-items: center;
-  padding: 4px 10px !important;
+  padding: 6px 12px !important;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-md);
   background: var(--panel) !important;
   color: var(--muted) !important;
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   line-height: 1.4;
   cursor: pointer;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.2);
+  transition: background 0.15s ease, color 0.15s ease;
+  max-width: min(320px, calc(100vw - 120px));
+}
+
+.leaflet-control-attribution:hover {
+  background: var(--panel-2) !important;
+  color: var(--text) !important;
 }
 
 .leaflet-control-attribution a {
@@ -825,18 +981,25 @@ input[type="radio"] {
 
 .leaflet-control-attribution.attrib-collapsed {
   justify-content: center;
-  min-width: 32px;
-  min-height: 32px;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
   padding: 0 !important;
   font-size: 0;
+  border-radius: var(--radius-md);
 }
 
 .leaflet-control-attribution.attrib-collapsed::before {
   content: "i";
   font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 0.82rem;
+  font-size: 0.85rem;
   font-weight: 700;
   color: var(--text);
+}
+
+.leaflet-control-attribution.attrib-collapsed:hover::before {
+  color: var(--accent-text);
 }
 
 .leaflet-control-attribution.attrib-collapsed > * {
@@ -847,18 +1010,19 @@ input[type="radio"] {
 @media (min-width: 640px) and (max-width: 960px) {
   #panel {
     max-width: 760px;
-    left: 50%;
-    right: auto;
     width: calc(100% - 24px);
-    transform: translate(-50%, calc(100% - var(--peek)));
+    left: 0;
+    right: 0;
+    margin-inline: auto;
+    transform: translateY(calc(100% - var(--peek)));
   }
 
   #panel.open {
-    transform: translate(-50%, 0);
+    transform: translateY(0);
   }
 
   #app.panel-hidden #panel {
-    transform: translate(-50%, 100%);
+    transform: translateY(100%);
   }
 
   .sheet-grid {
@@ -868,11 +1032,12 @@ input[type="radio"] {
   }
 }
 
-/* State ke-3 (Desktop >= 961px): panel menjadi instrumen sidebar tetap di sisi kiri. */
+/* State ke-3 (Desktop >= 961px): panel floating overlay lebar di sisi kiri tanpa mendorong canvas peta. */
 @media (min-width: 961px) {
   #app {
-    display: flex;
-    --map-left: 354px;
+    display: block;
+    --panel-w: 450px;
+    --map-left: calc(var(--panel-w) + 26px);
   }
 
   #app.panel-hidden {
@@ -885,31 +1050,34 @@ input[type="radio"] {
   }
 
   #map {
-    position: relative;
-    inset: auto;
-    flex: 1;
+    position: absolute;
+    inset: 0;
+    width: 100%;
     height: 100%;
   }
 
   #panel {
-    position: relative;
-    z-index: auto;
-    order: -1;
-    width: 340px;
-    min-width: 340px;
-    height: 100%;
-    border-top: 0;
-    border-right: 1px solid var(--line-strong);
-    border-radius: 0;
-    box-shadow: none;
-    transform: none;
-    transition: margin-left 0.25s cubic-bezier(0.22, 0.61, 0.36, 1);
+    position: absolute;
+    top: 14px;
+    bottom: 14px;
+    left: 14px;
+    z-index: 600;
+    width: var(--panel-w);
+    min-width: var(--panel-w);
+    max-width: calc(100vw - 28px);
+    margin-inline: 0;
+    height: auto;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 10px 32px rgba(15, 23, 42, 0.22);
+    transform: translateX(0);
+    transition: transform 0.25s cubic-bezier(0.22, 0.61, 0.36, 1);
     touch-action: auto;
   }
 
   #app.panel-hidden #panel {
-    transform: none;
-    margin-left: -340px;
+    transform: translateX(calc(-100% - 24px));
+    margin-left: 0;
   }
 
   #sheet-handle {
@@ -945,10 +1113,11 @@ input[type="radio"] {
   }
 
   #panel-toggle {
-    top: 12px;
+    top: 14px;
     bottom: auto;
     right: auto;
     left: var(--map-left);
+    z-index: 650;
     transition: left 0.25s cubic-bezier(0.22, 0.61, 0.36, 1), background 0.15s ease;
   }
 

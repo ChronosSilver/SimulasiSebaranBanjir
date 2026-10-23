@@ -17,7 +17,7 @@
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
     crossorigin=""
   />
-  <link rel="stylesheet" href="css/style.css?v=7" />
+  <link rel="stylesheet" href="css/style.css?v=16" />
 </head>
 <body>
   <div id="app">
@@ -161,6 +161,94 @@
         </div>
 
         <div id="sheet-rest" class="sheet-grid">
+          <div id="dynamic-params-container" class="dynamic-params-container" hidden>
+            <div class="subparam-card">
+              <div class="subparam-head">
+                <span class="subparam-title">Intensitas Hujan (BMKG)</span>
+                <span id="val-rain-intensity" class="subparam-badge">Sangat Lebat (35 mm/jam)</span>
+              </div>
+              <div id="rain-intensity-group" class="subparam-grid" role="radiogroup" aria-label="Intensitas curah hujan BMKG">
+                <button type="button" class="subparam-btn" data-val="0.5" role="radio" aria-checked="false">
+                  <span class="sub-label">Sangat Ringan</span>
+                  <span class="sub-val">&lt; 1 mm/j</span>
+                </button>
+                <button type="button" class="subparam-btn" data-val="3.0" role="radio" aria-checked="false">
+                  <span class="sub-label">Ringan</span>
+                  <span class="sub-val">1 - 5 mm/j</span>
+                </button>
+                <button type="button" class="subparam-btn" data-val="7.5" role="radio" aria-checked="false">
+                  <span class="sub-label">Sedang</span>
+                  <span class="sub-val">5 - 10 mm/j</span>
+                </button>
+                <button type="button" class="subparam-btn" data-val="15.0" role="radio" aria-checked="false">
+                  <span class="sub-label">Lebat</span>
+                  <span class="sub-val">10 - 20 mm/j</span>
+                </button>
+                <button type="button" class="subparam-btn active" data-val="35.0" role="radio" aria-checked="true">
+                  <span class="sub-label">Sangat Lebat</span>
+                  <span class="sub-val">&gt; 20 mm/j</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="subparam-card">
+              <div class="subparam-head">
+                <span class="subparam-title">Pasang Surut Muara (Rob)</span>
+                <span id="val-tide" class="subparam-badge">Normal (0,9 m dpl)</span>
+              </div>
+              <div id="tide-group" class="subparam-grid" role="radiogroup" aria-label="Tinggi pasang surut air laut">
+                <button type="button" class="subparam-btn" data-val="0.4" role="radio" aria-checked="false">
+                  <span class="sub-label">Surut</span>
+                  <span class="sub-val">0,4 m dpl</span>
+                </button>
+                <button type="button" class="subparam-btn active" data-val="0.9" role="radio" aria-checked="true">
+                  <span class="sub-label">Normal</span>
+                  <span class="sub-val">0,9 m dpl</span>
+                </button>
+                <button type="button" class="subparam-btn" data-val="1.5" role="radio" aria-checked="false">
+                  <span class="sub-label">Menengah</span>
+                  <span class="sub-val">1,5 m dpl</span>
+                </button>
+                <button type="button" class="subparam-btn" data-val="2.0" role="radio" aria-checked="false">
+                  <span class="sub-label">Rob Purnama</span>
+                  <span class="sub-val">2,0 m dpl</span>
+                </button>
+                <button type="button" class="subparam-btn" data-val="2.4" role="radio" aria-checked="false">
+                  <span class="sub-label">Rob Ekstrem</span>
+                  <span class="sub-val">2,4 m dpl</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="subparam-card">
+              <div class="subparam-head">
+                <span class="subparam-title">Debit Aliran Sungai Kapuas</span>
+                <span id="val-discharge" class="subparam-badge">Normal (3.000 m³/s)</span>
+              </div>
+              <div id="discharge-group" class="subparam-grid" role="radiogroup" aria-label="Debit aliran sungai Kapuas">
+                <button type="button" class="subparam-btn" data-val="1500" role="radio" aria-checked="false">
+                  <span class="sub-label">Rendah</span>
+                  <span class="sub-val">1.500 m³/s</span>
+                </button>
+                <button type="button" class="subparam-btn active" data-val="3000" role="radio" aria-checked="true">
+                  <span class="sub-label">Normal</span>
+                  <span class="sub-val">3.000 m³/s</span>
+                </button>
+                <button type="button" class="subparam-btn" data-val="4500" role="radio" aria-checked="false">
+                  <span class="sub-label">Siaga</span>
+                  <span class="sub-val">4.500 m³/s</span>
+                </button>
+                <button type="button" class="subparam-btn" data-val="6000" role="radio" aria-checked="false">
+                  <span class="sub-label">Banjir Q50</span>
+                  <span class="sub-val">6.000 m³/s</span>
+                </button>
+                <button type="button" class="subparam-btn" data-val="7500" role="radio" aria-checked="false">
+                  <span class="sub-label">Ekstrem Q100</span>
+                  <span class="sub-val">7.500 m³/s</span>
+                </button>
+              </div>
+            </div>
+          </div>
           <section class="ctl">
             <h2>Pengaturan layer</h2>
             <label class="slider-row" for="flood-opacity">
@@ -181,6 +269,18 @@
               </span>
               <input type="range" id="hillshade-opacity" min="0" max="100" value="28" />
             </label>
+
+            <div class="static-toggles-box">
+              <span class="sub-heading-text">Layer Parameter Statis</span>
+              <label class="check-row" for="slope-toggle">
+                <input type="checkbox" id="slope-toggle" />
+                <span>Tampilkan Kemiringan Lahan (Slope)</span>
+              </label>
+              <label class="check-row" for="landcover-toggle">
+                <input type="checkbox" id="landcover-toggle" />
+                <span>Tampilkan Tutupan Lahan (Land Cover)</span>
+              </label>
+            </div>
           </section>
 
           <section class="ctl">
@@ -215,6 +315,6 @@
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
     crossorigin=""
   ></script>
-  <script src="js/app.js?v=7"></script>
+  <script src="js/app.js?v=16"></script>
 </body>
 </html>

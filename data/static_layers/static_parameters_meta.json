@@ -1,0 +1,203 @@
+{
+  "region": "Kota Pontianak",
+  "total_area_km2": 118.92,
+  "grid_resolution": {
+    "dx_m": 33.83,
+    "dy_m": 40.94
+  },
+  "parameters": {
+    "statis": [
+      {
+        "id": "elevasi",
+        "nama": "Elevasi Topografi (DEMNAS)",
+        "satuan": "m dpl",
+        "rentang": [
+          0.07000000029802322,
+          8.460000038146973
+        ],
+        "layer_file": "data/dem_grid.json",
+        "hillshade_file": "data/hillshade.png"
+      },
+      {
+        "id": "kemiringan",
+        "nama": "Kemiringan Lahan (Slope)",
+        "satuan": "% (persen)",
+        "layer_file": "data/static_layers/slope.geojson",
+        "stats": [
+          {
+            "class_id": 1,
+            "name": "Datar",
+            "range": "0 - 2 %",
+            "color": "#2b83ba",
+            "risk": "Sangat Rawan Genangan",
+            "cells": 81465,
+            "percent": 94.9,
+            "area_km2": 112.82
+          },
+          {
+            "class_id": 2,
+            "name": "Landai",
+            "range": "2 - 8 %",
+            "color": "#abdda4",
+            "risk": "Rawan Genangan",
+            "cells": 4406,
+            "percent": 5.1,
+            "area_km2": 6.1
+          },
+          {
+            "class_id": 3,
+            "name": "Agak Curam",
+            "range": "8 - 15 %",
+            "color": "#fdae61",
+            "risk": "Agak Aman",
+            "cells": 0,
+            "percent": 0.0,
+            "area_km2": 0.0
+          },
+          {
+            "class_id": 4,
+            "name": "Curam",
+            "range": "> 15 %",
+            "color": "#d7191c",
+            "risk": "Aman",
+            "cells": 0,
+            "percent": 0.0,
+            "area_km2": 0.0
+          }
+        ]
+      },
+      {
+        "id": "tutupan_lahan",
+        "nama": "Tutupan Lahan (Land Cover)",
+        "satuan": "Koefisien Limpasan (C)",
+        "layer_file": "data/static_layers/landcover.geojson",
+        "stats": [
+          {
+            "id": 1,
+            "name": "Badan Air",
+            "c_runoff": 1.0,
+            "color": "#1f78b4",
+            "cells": 6844,
+            "percent": 8.0,
+            "area_km2": 9.48
+          },
+          {
+            "id": 2,
+            "name": "Kawasan Terbangun",
+            "c_runoff": 0.85,
+            "color": "#e31a1c",
+            "cells": 67109,
+            "percent": 78.2,
+            "area_km2": 92.94
+          },
+          {
+            "id": 3,
+            "name": "Lahan Terbuka & Semak",
+            "c_runoff": 0.45,
+            "color": "#fdbf6f",
+            "cells": 11520,
+            "percent": 13.4,
+            "area_km2": 15.95
+          },
+          {
+            "id": 4,
+            "name": "Vegetasi / RTH / Kebun",
+            "c_runoff": 0.25,
+            "color": "#33a02c",
+            "cells": 398,
+            "percent": 0.5,
+            "area_km2": 0.55
+          }
+        ]
+      }
+    ],
+    "dinamis": [
+      {
+        "id": "hujan",
+        "nama": "Intensitas Curah Hujan",
+        "satuan": "mm/jam (Standar Resmi BMKG)",
+        "opsi": [
+          {
+            "label": "Sangat Ringan",
+            "range": "< 1 mm/jam",
+            "val": 0.5
+          },
+          {
+            "label": "Ringan",
+            "range": "1 - 5 mm/jam",
+            "val": 3.0
+          },
+          {
+            "label": "Sedang",
+            "range": "5 - 10 mm/jam",
+            "val": 7.5
+          },
+          {
+            "label": "Lebat",
+            "range": "10 - 20 mm/jam",
+            "val": 15.0
+          },
+          {
+            "label": "Sangat Lebat",
+            "range": "> 20 mm/jam",
+            "val": 35.0
+          }
+        ]
+      },
+      {
+        "id": "pasang_surut",
+        "nama": "Tinggi Pasang Surut Muara Kapuas (Rob)",
+        "satuan": "m dpl",
+        "opsi": [
+          {
+            "label": "Surut Terendah (LLWL)",
+            "val": 0.4
+          },
+          {
+            "label": "Normal / Rata-rata (MSL)",
+            "val": 0.9
+          },
+          {
+            "label": "Pasang Menengah (MHWL)",
+            "val": 1.5
+          },
+          {
+            "label": "Pasang Rob Purnama (HHWL)",
+            "val": 2.0
+          },
+          {
+            "label": "Pasang Rob Ekstrem",
+            "val": 2.4
+          }
+        ]
+      },
+      {
+        "id": "debit_sungai",
+        "nama": "Debit Aliran Sungai Kapuas",
+        "satuan": "m\u00b3/s",
+        "opsi": [
+          {
+            "label": "Rendah (Musim Kemarau)",
+            "val": 1500
+          },
+          {
+            "label": "Normal Harian",
+            "val": 3000
+          },
+          {
+            "label": "Siaga / Hujan Hulu",
+            "val": 4500
+          },
+          {
+            "label": "Banjir Kiriman Hulu (Q50)",
+            "val": 6000
+          },
+          {
+            "label": "Banjir Ekstrem (Q100)",
+            "val": 7500
+          }
+        ]
+      }
+    ]
+  }
+}
